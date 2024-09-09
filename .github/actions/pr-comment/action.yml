@@ -1,0 +1,68 @@
+name: "appsharing.space link comment"
+description: "Comment on PR with appsharing.space link"
+inputs:
+  artifact_name:
+    description: "Name of the build artifact"
+    default: "artifact"
+  index_path:
+    description: "Path to the main index.html file"
+    default: "index.html"
+  comment_prefix:
+    description: "Message before the link"
+    default: "**Preview PR at**"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Comment APSS link
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const runId = ${{ github.event.workflow_run.id }};
+          const pullRequests = ${{ toJSON(github.event.workflow_run.pull_requests) }};
+          const indexPath = "${{ inputs.index_path }}";
+          const commentPrefix = "${{ inputs.comment_prefix }}";
+
+          const { owner, repo } = context.repo;
+
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            owner,
+            repo,
+            run_id: runId,
+          });
+          const matchArtifact = artifacts.data.artifacts.filter((artifact) => {
+            return artifact.name == "${{ inputs.artifact_name }}";
+          })[0];
+          if (!matchArtifact) {
+            return;
+          }
+          const artifactId = matchArtifact.id;
+
+          for (const pr of pullRequests) {
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: pr.number,
+            });
+            const botComments = comments.filter(
+              (comment) => comment.user.id === 41898282
+            );
+            const botComment = botComments.find((cm) => cm.body.includes(commentPrefix));
+            const apssLink = `https://appsharing.space/static-app?url=https://github.com/${owner}/${repo}/actions/runs/${runId}/artifacts/${artifactId}&indexPath=${indexPath}`;
+            const body = `${commentPrefix} [appsharing.space](${apssLink})`;
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body,
+              });
+            }
+          }
