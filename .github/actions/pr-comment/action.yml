@@ -49,6 +49,7 @@ runs:
             fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/data.zip`, Buffer.from(download.data));
 
     - name: 'Unzip artifact'
+      shell: bash
       run: unzip data.zip
 
     - name: Comment on PR
