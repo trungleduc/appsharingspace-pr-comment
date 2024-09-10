@@ -2,7 +2,7 @@ name: "Save artifact data to file"
 description: "Save PR number and Artifact link to a text file and upload as artifact"
 inputs:
   artifact_link:
-    description: "Name of the output artifact"
+    description: "Artifact link"
     required: true
   output_name:
     description: "Name of the output artifact"
