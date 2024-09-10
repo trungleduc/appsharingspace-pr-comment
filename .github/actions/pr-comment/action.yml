@@ -33,11 +33,11 @@ runs:
           const matchArtifact = artifacts.data.artifacts.filter((artifact) => {
             return artifact.name == "${{ inputs.artifact_name }}";
           })[0];
-          core.info(`Found artifact ${matchArtifact}`)
           if (!matchArtifact) {
             return;
           }
           const artifactId = matchArtifact.id;
+          core.info(`Found artifact ${artifactId}`);
 
           for (const pr of pullRequests) {
             const { data: comments } = await github.rest.issues.listComments({
