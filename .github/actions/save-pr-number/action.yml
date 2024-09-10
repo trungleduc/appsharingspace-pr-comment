@@ -10,6 +10,7 @@ runs:
   - name: Save PR number
     env:
       PR_NUMBER: ${{ github.event.number }}
+    shell: bash
     run: |
       mkdir -p ./pr
       echo $PR_NUMBER > ./pr/pr_number.txt
