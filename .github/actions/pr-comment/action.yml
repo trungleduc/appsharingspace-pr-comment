@@ -74,7 +74,7 @@ runs:
             (comment) => comment.user.id === 41898282
           );
           const botComment = botComments.find((cm) => cm.body.includes(commentPrefix));
-          const apssLink = `https://appsharing.space/static-app?url=${artifactLink}&indexPath=${indexPath}`;
+          const apssLink = `https://appsharing.space/static-app?url=${artifactLink.trim()}&indexPath=${indexPath}`;
           const body = `${commentPrefix} [appsharing.space](${apssLink})`;
           if (botComment) {
             await github.rest.issues.updateComment({
