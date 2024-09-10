@@ -1,21 +1,26 @@
-name: "Save PR number to file"
-description: "Save PR number to a text file and upload the artifact"
+name: "Save artifact data to file"
+description: "Save PR number and Artifact link to a text file and upload as artifact"
 inputs:
-  artifact_name:
+  artifact_link:
     description: "Name of the output artifact"
-    default: "pr_number"
+    required: true
+  output_name:
+    description: "Name of the output artifact"
+    required: false
+    default: "appsharingspace"
 runs:
   using: "composite"
   steps:
-  - name: Save PR number
+  - name: Save PR number and Artifact link
     env:
       PR_NUMBER: ${{ github.event.number }}
     shell: bash
     run: |
-      mkdir -p ./pr
-      echo $PR_NUMBER > ./pr/pr_number.txt
+      mkdir -p ./data
+      echo $PR_NUMBER > ./data/pr_number.txt
+      echo ${{ inputs.artifact_link }} > ./data/artifact_link.txt
   - name: Upload artifact
     uses: actions/upload-artifact@v4
     with:
-      path: pr/
-      name: ${{ inputs.artifact_name }}
+      path: data/
+      name: ${{ inputs.output_name }}

@@ -2,27 +2,27 @@ name: "appsharing.space link comment"
 description: "Comment on PR with appsharing.space link"
 inputs:
   artifact_name:
-    description: "Name of the build artifact"
-    default: "artifact"
+    description: "Name of the output artifact provided by the 'Save artifact data to file' action"
+    default: "appsharingspace"
+    required: false
   index_path:
     description: "Path to the main index.html file"
     default: "index.html"
   comment_prefix:
     description: "Message before the link"
     default: "**Preview PR at**"
+  github_token:
+    description: "GitHub access token"
+    require: true
 
 runs:
   using: "composite"
   steps:
-    - name: Comment APSS link
+    - name: Download data
       uses: actions/github-script@v7
       with:
         script: |
           const runId = ${{ github.event.workflow_run.id }};
-          const pullRequests = ${{ toJSON(github.event.workflow_run.pull_requests) }};
-          const indexPath = "${{ inputs.index_path }}";
-          const commentPrefix = "${{ inputs.comment_prefix }}";
-
           const { owner, repo } = context.repo;
 
           const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
@@ -36,34 +36,58 @@ runs:
           if (!matchArtifact) {
             return;
           }
-          const artifactId = matchArtifact.id;
-          core.info(`Found artifact ${artifactId}`);
+          core.info(`Found artifact ${JSON.stringify(matchArtifact)}`);
 
-          for (const pr of pullRequests) {
-            const { data: comments } = await github.rest.issues.listComments({
+          const artifactId = matchArtifact.id;
+          const download = await github.rest.actions.downloadArtifact({
+               owner,
+               repo,
+               artifact_id: artifactId,
+               archive_format: 'zip',
+            });
+            let fs = require('fs');
+            fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/data.zip`, Buffer.from(download.data));
+
+    - name: 'Unzip artifact'
+      run: unzip data.zip
+
+    - name: Comment on PR
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github_token }}
+        script: |
+          const fs = require('fs');
+          const indexPath = "${{ inputs.index_path }}";
+          const commentPrefix = "${{ inputs.comment_prefix }}";
+          const { owner, repo } = context.repo;
+          const issueNumber = Number(fs.readFileSync('./pr_number.txt', 'utf8'));
+          const artifactLink = fs.readFileSync('./artifact_link.txt', 'utf8');
+          core.info(`issueNumber: ${issueNumber}`);
+          core.info(`artifactLink: ${artifactLink}`);
+          const { data: comments } = await github.rest.issues.listComments({
+            owner,
+            repo,
+            issue_number: issueNumber,
+          });
+          const botComments = comments.filter(
+            (comment) => comment.user.id === 41898282
+          );
+          const botComment = botComments.find((cm) => cm.body.includes(commentPrefix));
+          const apssLink = `https://appsharing.space/static-app?url=${artifactLink}&indexPath=${indexPath}`;
+          const body = `${commentPrefix} [appsharing.space](${apssLink})`;
+          if (botComment) {
+            await github.rest.issues.updateComment({
               owner,
               repo,
-              issue_number: pr.number,
+              comment_id: botComment.id,
+              body,
             });
-            const botComments = comments.filter(
-              (comment) => comment.user.id === 41898282
-            );
-            const botComment = botComments.find((cm) => cm.body.includes(commentPrefix));
-            const apssLink = `https://appsharing.space/static-app?url=https://github.com/${owner}/${repo}/actions/runs/${runId}/artifacts/${artifactId}&indexPath=${indexPath}`;
-            const body = `${commentPrefix} [appsharing.space](${apssLink})`;
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner,
-                repo,
-                comment_id: botComment.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                body,
-              });
-            }
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body,
+            });
           }
+          
