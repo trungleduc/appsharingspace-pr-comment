@@ -33,6 +33,7 @@ runs:
           const matchArtifact = artifacts.data.artifacts.filter((artifact) => {
             return artifact.name == "${{ inputs.artifact_name }}";
           })[0];
+          core.info(`Found artifact ${matchArtifact}`)
           if (!matchArtifact) {
             return;
           }
